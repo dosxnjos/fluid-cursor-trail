@@ -4,6 +4,28 @@ O rastro do cursor na home do [torii.studio](https://torii.studio/) **não é um
 
 É o projeto open-source **[WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation)** do **Pavel Dobryakov** — **licença MIT**. O torii só ligou `SHADING` + `BLOOM`, deixou o fundo **transparente** sobre o site escuro e tunou a paleta pro rosa/magenta da marca.
 
+## Demos
+
+### Rodáveis (abra e mexa o cursor)
+
+| Demo | Como abrir | O quê |
+|---|---|---|
+| [`index.html`](index.html) | Abra direto no navegador | Preset **torii** (rosa/magenta) sobre fundo escuro — o efeito puro, do jeito do site. |
+| [`testbed/index.html`](testbed/index.html) | Abra direto no navegador | **Bancada com painel ao vivo**: arraste os sliders (dissipação, raio, curl, bloom, blur, véu…) e veja o rastro mudar na hora. É daqui que saem os presets. |
+
+### Aplicado num app real (resultado do `apply_full.py`)
+
+As capturas abaixo mostram o efeito + tema quente (laranja/dourado) **injetados no app Catalogador** via [`apply_full.py`](apply_full.py) — é o mesmo motor de fluido, só com outra paleta e rodando atrás da UI:
+
+![Tela principal do Catalogador re-tematizada, com o fundo de fluido atrás da interface](overlay-sb.jpeg)
+*Tela principal — tema quente + fundo de fluido injetados sobre a UI.*
+
+![Zoom de produto (modal) sobre o fundo escuro com o efeito](def-cursor.jpeg)
+*Zoom de produto, com o fundo escuro e o efeito compondo por trás.*
+
+![Detalhe da toolbar re-tematizada, botão "Baixar tudo" em laranja](btn-baixar.jpeg)
+*Detalhe da toolbar re-tematizada (índigo → laranja/dourado).*
+
 ## Como funciona (em 1 parágrafo)
 
 A cada movimento do cursor, o código calcula o deslocamento `(deltaX, deltaY)` e faz um **"splat"**: injeta um borrão gaussiano de **velocidade** (delta × `SPLAT_FORCE`) no campo de velocidade e um borrão de **cor** no campo de tinta (dye), ambos do tamanho `SPLAT_RADIUS`. A cada frame, a GPU resolve o fluido: vorticidade (`CURL`) → divergência → pressão (Jacobi) → subtração do gradiente (mantém incompressível) → **advecção** (a tinta é "empurrada" pelo campo de velocidade) → e tudo desbota um pouco via `DENSITY_DISSIPATION` / `VELOCITY_DISSIPATION`. O resultado é tinta que escorre e some como fumaça, seguindo o cursor.
