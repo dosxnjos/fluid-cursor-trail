@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Fluid Cursor Trail — estilo torii.studio</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      /* fundo escuro com leve tom magenta, como o do torii */
+      background: #060409;
+      color: #fff;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* O canvas do fluido: fixo, tela cheia, ATRÁS do conteúdo. */
+    #fluid {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;        /* fica atrás do conteúdo (que tem z-index maior) */
+      display: block;
+      touch-action: none; /* permite o rastro no mobile sem rolar/zoom a página */
+    }
+
+    /* Conteúdo por cima do canvas.
+       IMPORTANTE: a camada de conteúdo precisa deixar o cursor "passar" até o canvas,
+       porque o webgl-fluid (original) escuta mousemove NO CANVAS.
+       Por isso: pointer-events: none no container decorativo,
+       e pointer-events: auto só nos elementos interativos de verdade (links, botões). */
+    .content {
+      position: relative;
+      z-index: 1;
+      pointer-events: none;            /* deixa o cursor atravessar até o canvas */
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: clamp(24px, 6vw, 96px);
+    }
+    .content a,
+    .content button { pointer-events: auto; } /* só o que é clicável recebe o cursor */
+
+    h1 { font-size: clamp(40px, 8vw, 110px); line-height: 0.95; font-weight: 800; letter-spacing: -0.02em; }
+    p  { margin-top: 20px; font-size: clamp(16px, 2.2vw, 22px); opacity: 0.75; max-width: 32ch; }
+    .hint { margin-top: 28px; font-size: 14px; opacity: 0.5; }
+  </style>
+</head>
+<body>
+  <!-- 1. O canvas que recebe a simulação -->
+  <canvas id="fluid"></canvas>
+
+  <!-- 2. Seu conteúdo normal por cima -->
+  <main class="content">
+    <h1>Mexe o<br>cursor aqui</h1>
+    <p>Cada movimento injeta velocidade e tinta num fluido WebGL rodando na GPU.</p>
+    <p class="hint">Efeito: WebGL-Fluid-Simulation (Pavel Dobryakov, MIT) — o mesmo do torii.studio.</p>
+  </main>
+
+  <!-- 3. A simulação. Usamos o ESM via CDN pra não depender de bundler.
+       Trocar a versão fixa (@0.4.0) por outra é só mudar a URL. -->
+  <script type="module">
+    import WebGLFluid from 'https://esm.run/webgl-fluid@0.4.0';
+
+    const canvas = document.getElementById('fluid');
+
+    // ---- Config tunada pra ficar parecida com o torii (sutil, escuro, rosa/magenta) ----
+    // Comentários marcam tudo que difere do default do pacote.
+    WebGLFluid(canvas, {
+      TRANSPARENT: true,                  // canvas transparente -> compõe sobre o fundo escuro do site
+      BACK_COLOR: { r: 6, g: 4, b: 10 },  // 0-255; só usado se TRANSPARENT for false (deixo por segurança)
+
+      SHADING: true,                      // (default) iluminação volumétrica — confirmado ligado no torii
+      BLOOM: true,                        // (default) brilho
+      BLOOM_INTENSITY: 0.4,               // de 0.8 -> mais sutil, sem estourar
+      BLOOM_THRESHOLD: 0.7,               // de 0.6 -> só os núcleos mais brilhantes brilham
+      SUNRAYS: false,                     // god-rays off -> rastro mais limpo
+
+      DENSITY_DISSIPATION: 3.5,           // de 1 -> tinta some rápido (rastro curto, não borra a tela)
+      VELOCITY_DISSIPATION: 0.5,          // de 0.2 -> movimento assenta mais rápido, rastro "cola" no cursor
+      CURL: 8,                            // de 30 -> bem menos redemoinho; fita suave em vez de caos
+
+      SPLAT_RADIUS: 0.18,                 // de 0.25 -> rastro mais fino/delicado
+      SPLAT_FORCE: 4500,                  // de 6000 -> injeção mais calma
+
+      COLORFUL: false,                    // desliga o ciclo automático de cores...
+      SPLAT_COLOR: { r: 0.9, g: 0.1, b: 0.5 }, // ...e fixa rosa/magenta (canais 0-1 float neste fork)
+
+      SIM_RESOLUTION: 96,                 // de 128 -> grid de velocidade mais barato
+      DYE_RESOLUTION: 512,                // de 1024 -> metade do custo de GPU, nítido o bastante p/ fundo
+
+      TRIGGER: 'hover',                   // (default) rastro segue o cursor ao mover
+      IMMEDIATE: false,                   // sem a "explosão" aleatória inicial -> página carrega limpa
+      AUTO: false,                        // (default) nada de splats automáticos; 100% dirigido pelo cursor
+    });
+
+    // Dica: se as cores saírem estranhas, comente SPLAT_COLOR e deixe COLORFUL: true.
+    // (SPLAT_COLOR é a opção mais "frágil" entre versões do pacote — é o 1º lugar a checar.)
+  </script>
+</body>
+</html>

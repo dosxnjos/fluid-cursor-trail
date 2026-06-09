@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fluid Testbed — rastro de fluido</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --text-primary:#f8fafc; --text-secondary:#94a3b8; --border:#334155;
+    --accent:#FF7B00; --accent-hover:#FF5100; --glass-border:rgba(255,255,255,0.06);
+    /* knobs CSS (ao vivo) */
+    --veil:0.0; --blur:5px; --glass-alpha:0.34;
+    --glass-bg:rgba(30,41,59,var(--glass-alpha));
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Outfit',sans-serif;-webkit-font-smoothing:antialiased;}
+  html{background:#07070c;}
+  body{background:transparent;color:var(--text-primary);min-height:100vh;}
+
+  /* ===== a "div transparente" do efeito ===== */
+  #fluidwrap{position:fixed !important;inset:0;width:100vw !important;height:100vh !important;
+             z-index:-2 !important;pointer-events:none;filter:blur(var(--blur));}
+  #fluidwrap canvas{width:100% !important;height:100% !important;display:block !important;}
+  #fluidveil{position:fixed;inset:0;z-index:-1;pointer-events:none;background:rgba(7,9,14,var(--veil));}
+
+  /* ===== conteúdo de amostra (só pra julgar legibilidade/contraste) ===== */
+  main{max-width:760px;margin:0 auto;padding:72px 24px;position:relative;z-index:1;}
+  h1{font-size:clamp(34px,6vw,64px);font-weight:800;letter-spacing:-.02em;line-height:1;
+     background:linear-gradient(135deg,#FFD600,#FF7B00);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .sub{margin-top:14px;color:var(--text-secondary);font-size:18px;}
+  .card{margin-top:40px;background:var(--glass-bg);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+        border:1px solid var(--glass-border);border-radius:18px;padding:24px;}
+  .card h2{font-size:20px;margin-bottom:8px;}
+  .card p{color:var(--text-secondary);font-size:15px;line-height:1.5;}
+  .btns{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;}
+  .btn{padding:11px 18px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;border:none;}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:#fff;}
+  .btn-ghost{background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);}
+  .badge{display:inline-block;background:rgba(255,123,0,.15);color:#FFD600;border:1px solid rgba(255,123,0,.35);
+         padding:3px 12px;border-radius:99px;font-size:13px;font-weight:600;}
+
+  /* ===== painel de controle (recolhível) ===== */
+  #painel{position:fixed;top:14px;right:14px;z-index:50;width:282px;max-height:calc(100vh - 28px);overflow:auto;
+          background:rgba(15,23,42,.92);backdrop-filter:blur(12px);border:1px solid var(--glass-border);
+          border-radius:16px;padding:0 16px 14px;box-shadow:0 18px 40px rgba(0,0,0,.5);font-size:12px;color:var(--text-secondary);}
+  .painel-head{position:sticky;top:0;background:rgba(15,23,42,.96);margin:0 -16px 4px;padding:12px 16px;
+          display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--glass-border);z-index:2;}
+  .painel-head h3{font-size:12px;color:var(--text-primary);text-transform:uppercase;letter-spacing:.5px;}
+  #toggle{width:26px;height:26px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.05);
+          color:var(--text-primary);font-size:16px;line-height:1;cursor:pointer;}
+  #toggle:hover{background:var(--accent);border-color:var(--accent);}
+  #reabrir{position:fixed;top:14px;right:14px;z-index:51;display:none;align-items:center;gap:7px;
+           padding:9px 14px;border-radius:12px;border:1px solid var(--glass-border);cursor:pointer;
+           background:rgba(15,23,42,.92);backdrop-filter:blur(10px);color:var(--text-primary);font-weight:600;font-size:13px;box-shadow:0 10px 24px rgba(0,0,0,.45);}
+  #reabrir:hover{border-color:var(--accent);}
+  #painel.collapsed{display:none;}
+  #painel h4{margin:14px 0 6px;font-size:11px;color:#FFD600;text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--glass-border);padding-top:10px;}
+  #painel .note{font-size:10.5px;color:#64748b;margin-bottom:4px;}
+  #painel label{display:block;margin:9px 0 3px;}
+  #painel label b{float:right;color:#FFD600;font-weight:600;}
+  #painel input[type=range]{width:100%;accent-color:var(--accent);}
+  #painel .rowflex{display:flex;align-items:center;gap:8px;margin:8px 0;}
+  #painel .rowflex input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;}
+  #painel .swatches{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+  #painel .swatch{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:3px 5px;}
+  #painel .swatch input[type=color]{width:26px;height:22px;border:none;background:none;padding:0;cursor:pointer;}
+  #painel .swatch input[type=checkbox]{accent-color:var(--accent);}
+  #painel .presets{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  #painel .presets button{flex:1;min-width:70px;padding:6px;font-size:11px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);}
+  #painel .btn-exp{width:100%;margin-top:10px;padding:9px;border-radius:9px;cursor:pointer;font-weight:600;background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:#fff;border:none;}
+  #painel textarea{width:100%;height:120px;margin-top:8px;background:#0b1220;border:1px solid var(--border);color:#cbd5e1;border-radius:8px;padding:8px;font-family:ui-monospace,monospace;font-size:10.5px;resize:vertical;}
+</style>
+</head>
+<body>
+  <div id="fluidwrap"></div>
+  <div id="fluidveil"></div>
+
+  <!-- conteúdo de amostra -->
+  <main>
+    <span class="badge">FLUID TESTBED</span>
+    <h1>Rastro de fluido</h1>
+    <p class="sub">Mexa o cursor pela página. Ajuste tudo no painel → quando gostar, clique em “Copiar config”.</p>
+    <div class="card">
+      <h2>Exemplo de painel</h2>
+      <p>Use este cartão pra julgar legibilidade do texto sobre o rastro. A transparência dos painéis, o véu e o blur mudam o quanto o fluido aparece por trás do conteúdo.</p>
+      <div class="btns">
+        <button class="btn btn-primary">Ação primária</button>
+        <button class="btn btn-ghost">Secundária</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- painel -->
+  <button id="reabrir">⚙ Controles</button>
+  <aside id="painel">
+    <div class="painel-head"><h3>Rastro de fluido</h3><button id="toggle" title="Recolher">–</button></div>
+
+    <h4>Cores</h4>
+    <div class="rowflex"><input type="checkbox" id="colorful"><label style="margin:0">Aleatório (todas as cores)</label></div>
+    <div class="note">ou defina a paleta (marque as cores ativas):</div>
+    <div class="swatches" id="swatches"></div>
+    <div class="presets">
+      <button data-pal="quentes">Quentes</button>
+      <button data-pal="indigo">Índigo</button>
+      <button data-pal="frias">Frias</button>
+    </div>
+    <label>Velocidade de troca de cor <b id="vCUS">15</b></label>
+    <input type="range" id="cus" min="1" max="30" step="1" value="15">
+
+    <h4>Pós-processamento</h4>
+    <div class="rowflex"><input type="checkbox" id="bloom" checked><label style="margin:0">Bloom (glow)</label></div>
+    <label>Intensidade do bloom <b id="vBloomI">0.55</b></label>
+    <input type="range" id="bloomIntensity" min="0" max="1.5" step="0.05" value="0.55">
+    <div class="rowflex"><input type="checkbox" id="sunrays" checked><label style="margin:0">Sunrays (raios)</label></div>
+    <label>Peso dos sunrays <b id="vSunW">0.6</b></label>
+    <input type="range" id="sunraysWeight" min="0" max="2" step="0.1" value="0.6">
+    <div class="rowflex"><input type="checkbox" id="shading" checked><label style="margin:0">Shading (volume)</label></div>
+    <label>Brilho <b id="vBri">1.0</b></label>
+    <input type="range" id="brightness" min="0.3" max="1.5" step="0.05" value="1.0">
+
+    <h4>Movimento do rastro</h4>
+    <label>Dissipação / sumiço <b id="vDD">5.0</b></label>
+    <input type="range" id="dd" min="0.5" max="5" step="0.1" value="5">
+    <label>Raio do traço <b id="vSR">0.10</b></label>
+    <input type="range" id="sr" min="0.05" max="0.4" step="0.01" value="0.10">
+    <label>Força <b id="vSF">5600</b></label>
+    <input type="range" id="sf" min="1000" max="8000" step="100" value="5600">
+    <label>Redemoinho (curl) <b id="vCurl">7</b></label>
+    <input type="range" id="curl" min="0" max="40" step="1" value="7">
+
+    <h4>Composição (CSS)</h4>
+    <label>Escurecimento do véu <b id="vVeil">0.00</b></label>
+    <input type="range" id="veil" min="0" max="0.92" step="0.01" value="0">
+    <label>Blur global <b id="vBlur">5 px</b></label>
+    <input type="range" id="blurr" min="0" max="24" step="1" value="5">
+    <label>Transparência dos painéis <b id="vGlass">0.34</b></label>
+    <input type="range" id="glass" min="0.18" max="0.85" step="0.01" value="0.34">
+
+    <button class="btn-exp" id="exportar">📋 Copiar config</button>
+    <textarea id="out" placeholder="A configuração escolhida aparece aqui — copie e me mande." readonly></textarea>
+  </aside>
+
+  <!--LIB-->
+  <script>
+    const el = id => document.getElementById(id);
+    const root = document.documentElement;
+    const wrap = el('fluidwrap');
+    const Klass = (window.WebGLFluidEnhanced && (window.WebGLFluidEnhanced.default || window.WebGLFluidEnhanced));
+
+    // recolher / expandir painel
+    el('toggle').addEventListener('click',()=>{ el('painel').classList.add('collapsed'); el('reabrir').style.display='inline-flex'; });
+    el('reabrir').addEventListener('click',()=>{ el('painel').classList.remove('collapsed'); el('reabrir').style.display='none'; });
+
+    // paleta editável (6 slots; 2 quentes ativos por padrão = sua escolha)
+    const DEFAULT_COLORS = [
+      {c:'#FF7B00', on:true}, {c:'#FF5100', on:true}, {c:'#FFD600', on:false},
+      {c:'#6366f1', on:false}, {c:'#10b981', on:false}, {c:'#f8fafc', on:false},
+    ];
+    const swatches = el('swatches');
+    DEFAULT_COLORS.forEach(s=>{ const w=document.createElement('div'); w.className='swatch';
+      w.innerHTML=`<input type="checkbox" ${s.on?'checked':''}><input type="color" value="${s.c}">`; swatches.appendChild(w); });
+    function setPalette(list){ [...swatches.children].forEach((w,i)=>{ const chk=w.querySelector('input[type=checkbox]'),col=w.querySelector('input[type=color]');
+        if(i<list.length){chk.checked=true;col.value=list[i];}else{chk.checked=false;} }); el('colorful').checked=false; rebuild(); }
+    const PALETAS={quentes:['#FF7B00','#FF5100'],indigo:['#6366f1','#818cf8','#a5b4fc'],frias:['#06b6d4','#3b82f6','#22d3ee']};
+    document.querySelectorAll('#painel .presets button').forEach(b=>b.addEventListener('click',()=>setPalette(PALETAS[b.dataset.pal])));
+
+    function currentConfig(){
+      const aleatorio = el('colorful').checked;
+      const palette = aleatorio ? [] : [...swatches.children].filter(w=>w.querySelector('input[type=checkbox]').checked).map(w=>w.querySelector('input[type=color]').value);
+      return { colorPalette:palette, colorful:true, colorUpdateSpeed:+el('cus').value,
+        bloom:el('bloom').checked, bloomIntensity:+el('bloomIntensity').value,
+        sunrays:el('sunrays').checked, sunraysWeight:+el('sunraysWeight').value,
+        shading:el('shading').checked, brightness:+el('brightness').value,
+        transparent:true, hover:true,
+        densityDissipation:+el('dd').value, splatRadius:+el('sr').value, splatForce:+el('sf').value, curl:+el('curl').value,
+        velocityDissipation:0.5, simResolution:96, dyeResolution:512 };
+    }
+
+    let sim, ic;
+    function rebuild(){
+      try{ if(sim&&sim.stop) sim.stop(); }catch(e){}
+      [...wrap.querySelectorAll('canvas')].forEach(c=>c.remove());
+      sim = new Klass(wrap); sim.setConfig(currentConfig()); sim.start();
+      ic = wrap.querySelector('canvas');
+    }
+    let tmr; const scheduleRebuild=()=>{ clearTimeout(tmr); tmr=setTimeout(rebuild,120); };
+    window.addEventListener('pointermove',e=>{ if(ic) ic.dispatchEvent(new MouseEvent('mousemove',{clientX:e.clientX,clientY:e.clientY,bubbles:true})); },{passive:true});
+
+    const simControls=['colorful','cus','bloom','bloomIntensity','sunrays','sunraysWeight','shading','brightness','dd','sr','sf','curl'];
+    simControls.forEach(id=>el(id).addEventListener('input',scheduleRebuild));
+    swatches.addEventListener('input',scheduleRebuild);
+    const labels={cus:'vCUS',bloomIntensity:'vBloomI',sunraysWeight:'vSunW',brightness:'vBri',dd:'vDD',sr:'vSR',sf:'vSF',curl:'vCurl'};
+    Object.entries(labels).forEach(([id,lab])=>{ const f=()=>el(lab).textContent=el(id).value; el(id).addEventListener('input',f); f(); });
+
+    const bindCSS=(id,varName,lab,fmt)=>{ const f=()=>{root.style.setProperty(varName,fmt(el(id).value));el(lab).textContent=fmt(el(id).value);}; el(id).addEventListener('input',f); f(); };
+    bindCSS('veil','--veil','vVeil',v=>(+v).toFixed(2));
+    bindCSS('glass','--glass-alpha','vGlass',v=>(+v).toFixed(2));
+    el('blurr').addEventListener('input',()=>{root.style.setProperty('--blur',el('blurr').value+'px');el('vBlur').textContent=el('blurr').value+' px';});
+
+    el('exportar').addEventListener('click',()=>{
+      const c=currentConfig(); const aleatorio=c.colorPalette.length===0;
+      el('out').value=
+`PALETA: ${aleatorio?'(aleatório / todas as cores)':JSON.stringify(c.colorPalette)}
+velocidade troca de cor: ${c.colorUpdateSpeed}
+bloom: ${c.bloom} | intensidade: ${c.bloomIntensity}
+sunrays: ${c.sunrays} | peso: ${c.sunraysWeight}
+shading: ${c.shading} | brilho: ${c.brightness}
+dissipacao: ${c.densityDissipation} | raio: ${c.splatRadius} | forca: ${c.splatForce} | curl: ${c.curl}
+veu: ${getComputedStyle(root).getPropertyValue('--veil').trim()} | blur: ${getComputedStyle(root).getPropertyValue('--blur').trim()} | paineis: ${getComputedStyle(root).getPropertyValue('--glass-alpha').trim()}`;
+      el('out').select(); try{document.execCommand('copy');}catch(e){}
+    });
+
+    if(!Klass){ document.querySelector('.painel-head h3').textContent='ERRO: lib não carregou'; }
+    else rebuild();
+  </script>
+</body>
+</html>

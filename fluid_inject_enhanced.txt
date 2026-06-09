@@ -1,0 +1,87 @@
+# ============================================================================
+#  EFEITO DE FUNDO — rastro de fluido seguindo o cursor (estilo torii.studio)
+#  Motor: webgl-fluid-enhanced (fork MIT do WebGL-Fluid-Simulation de Pavel
+#  Dobryakov), embutido offline em base64 -> sem internet/arquivos externos.
+#  ---------------------------------------------------------------------------
+#  >>> INTERRUPTOR: troque para False e o app volta 100% ao visual original <<<
+EFEITO_FLUIDO = True
+
+#  >>> PALETA: cores que se alternam no rastro <<<
+#  --- CORES ANTIGAS (substituidas): indigo ~#4D42F2 / violeta ~#8C2EF2 -------
+FLUIDO_PALETA   = ["#FF7B00", "#FF5100"]
+FLUIDO_VEL_COR  = 15        # velocidade de troca de cor (1-30)
+
+#  >>> POS-PROCESSAMENTO <<<
+FLUIDO_BLOOM        = True   # glow
+FLUIDO_BLOOM_INT    = 0.55
+FLUIDO_SUNRAYS      = True   # raios
+FLUIDO_SUNRAYS_PESO = 0.6
+FLUIDO_SHADING      = True   # volume
+FLUIDO_BRILHO       = 1.0    # 0.3 - 1.5
+
+#  >>> MOVIMENTO DO RASTRO <<<
+FLUIDO_DISSIPACAO = 5.0      # sumico (maior = some mais rapido)
+FLUIDO_RAIO       = 0.10     # raio do traco
+FLUIDO_FORCA      = 5600
+FLUIDO_CURL       = 7        # redemoinho
+
+#  >>> COMPOSICAO (CSS) <<<
+FLUIDO_VEU     = 0.0         # escurecimento (0 = rastro cru ... 0.92 = some)
+FLUIDO_BLUR    = 5           # blur global do rastro (px)
+FLUIDO_PAINEIS = 0.34        # transparencia de cards/paineis (0.18 ... 0.85)
+# ============================================================================
+
+if EFEITO_FLUIDO:
+    import base64 as _b64
+    _jb = lambda b: "true" if b else "false"
+
+    _FLUIDO_LIB = _b64.b64decode("__B64__").decode("utf-8")
+    _FLUIDO_PALETA_JS = "[" + ",".join('"' + str(_c) + '"' for _c in FLUIDO_PALETA) + "]"
+
+    _FLUIDO_CSS = (
+        "<style id='fluido-bg-style'>"
+        "html{background:#07070c;}"
+        "body{background:transparent !important;}"
+        "#fluidwrap{position:fixed !important;inset:0;width:100vw !important;height:100vh !important;"
+        "z-index:-2 !important;pointer-events:none;display:block !important;"
+        "filter:blur(" + str(FLUIDO_BLUR) + "px);}"
+        "#fluidwrap canvas{width:100% !important;height:100% !important;display:block !important;}"
+        "#fluidveil{position:fixed;inset:0;z-index:-1;pointer-events:none;"
+        "background:rgba(7,9,14," + str(FLUIDO_VEU) + ");}"
+        ":root{--glass-bg:rgba(30,41,59," + str(FLUIDO_PAINEIS) + ");}"
+        "</style>"
+    )
+
+    _FLUIDO_BODY = "<div id='fluidwrap'></div><div id='fluidveil'></div>"
+
+    _FLUIDO_CFG = (
+        "colorPalette:" + _FLUIDO_PALETA_JS + ", colorful:true, colorUpdateSpeed:" + str(FLUIDO_VEL_COR) + ","
+        "bloom:" + _jb(FLUIDO_BLOOM) + ", bloomIntensity:" + str(FLUIDO_BLOOM_INT) + ","
+        "sunrays:" + _jb(FLUIDO_SUNRAYS) + ", sunraysWeight:" + str(FLUIDO_SUNRAYS_PESO) + ","
+        "shading:" + _jb(FLUIDO_SHADING) + ", brightness:" + str(FLUIDO_BRILHO) + ","
+        "transparent:true, hover:true,"
+        "densityDissipation:" + str(FLUIDO_DISSIPACAO) + ", splatRadius:" + str(FLUIDO_RAIO) + ","
+        "splatForce:" + str(FLUIDO_FORCA) + ", curl:" + str(FLUIDO_CURL) + ","
+        "velocityDissipation:0.5, simResolution:96, dyeResolution:512"
+    )
+
+    _FLUIDO_INIT = (
+        "<script>(function(){"
+        "var W=window.WebGLFluidEnhanced; if(!W){return;}"
+        "var K=W.default||W; var wrap=document.getElementById('fluidwrap'); if(!wrap){return;}"
+        "var sim; try{ sim=new K(wrap); sim.setConfig({" + _FLUIDO_CFG + "}); sim.start(); }"
+        "catch(e){ console.warn('fluido off:',e); return; }"
+        "var ic=wrap.querySelector('canvas');"
+        "window.addEventListener('pointermove',function(e){"
+        "if(ic) ic.dispatchEvent(new MouseEvent('mousemove',{clientX:e.clientX,clientY:e.clientY,bubbles:true}));"
+        "},{passive:true});"
+        "})();</script>"
+    )
+
+    _FLUIDO_SCRIPT = "<script>" + _FLUIDO_LIB + "</script>" + _FLUIDO_INIT
+
+    __VARNAME__ = (__VARNAME__
+        .replace("</head>", _FLUIDO_CSS + "</head>", 1)
+        .replace("<body>", "<body>" + _FLUIDO_BODY, 1)
+        .replace("</body>", _FLUIDO_SCRIPT + "</body>", 1))
+# ============================================================================
