@@ -4,27 +4,14 @@ O rastro do cursor na home do [torii.studio](https://torii.studio/) **não é um
 
 É o projeto open-source **[WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation)** do **Pavel Dobryakov** — **licença MIT**. O torii só ligou `SHADING` + `BLOOM`, deixou o fundo **transparente** sobre o site escuro e tunou a paleta pro rosa/magenta da marca.
 
-## Demos
+## Demos ao vivo
 
-### Rodáveis (abra e mexa o cursor)
+Abra e mexa o cursor — roda 100% no navegador, na GPU:
 
-| Demo | Como abrir | O quê |
-|---|---|---|
-| [`index.html`](index.html) | Abra direto no navegador | Preset **torii** (rosa/magenta) sobre fundo escuro — o efeito puro, do jeito do site. |
-| [`testbed/index.html`](testbed/index.html) | Abra direto no navegador | **Bancada com painel ao vivo**: arraste os sliders (dissipação, raio, curl, bloom, blur, véu…) e veja o rastro mudar na hora. É daqui que saem os presets. |
+- 🌊 **[Efeito (preset torii)](https://dosxnjos.github.io/fluid-cursor-trail/)** — o rastro rosa/magenta sobre fundo escuro, do jeito do site.
+- 🎛️ **[Bancada de tuning](https://dosxnjos.github.io/fluid-cursor-trail/testbed/)** — painel ao vivo: arraste os sliders (dissipação, raio, curl, bloom, blur, véu…) e veja o rastro mudar na hora. É daqui que saem os presets.
 
-### Aplicado num app real (resultado do `apply_full.py`)
-
-As capturas abaixo mostram o efeito + tema quente (laranja/dourado) **injetados no app Catalogador** via [`apply_full.py`](apply_full.py) — é o mesmo motor de fluido, só com outra paleta e rodando atrás da UI:
-
-![Tela principal do Catalogador re-tematizada, com o fundo de fluido atrás da interface](overlay-sb.jpeg)
-*Tela principal — tema quente + fundo de fluido injetados sobre a UI.*
-
-![Zoom de produto (modal) sobre o fundo escuro com o efeito](def-cursor.jpeg)
-*Zoom de produto, com o fundo escuro e o efeito compondo por trás.*
-
-![Detalhe da toolbar re-tematizada, botão "Baixar tudo" em laranja](btn-baixar.jpeg)
-*Detalhe da toolbar re-tematizada (índigo → laranja/dourado).*
+> Rodando local: sirva a pasta por http (ex.: `npx serve` ou `python -m http.server`) — o `index.html` importa a lib via CDN ESM, então abrir por `file://` pode falhar.
 
 ## Como funciona (em 1 parágrafo)
 
@@ -32,27 +19,11 @@ A cada movimento do cursor, o código calcula o deslocamento `(deltaX, deltaY)` 
 
 ## Arquivos aqui
 
-**Consumo (o que você normalmente copia pra outro projeto):**
-
 | Arquivo | O quê |
 |---|---|
-| [`index.html`](index.html) | Versão **vanilla**, copia-e-cola. Abre direto no navegador (carrega o pacote via CDN ESM, sem bundler). |
+| [`index.html`](index.html) | Versão **vanilla**, copia-e-cola. Carrega o pacote via CDN ESM (sem bundler). É o que a demo "Efeito" serve. |
 | [`FluidBackground.jsx`](FluidBackground.jsx) | Componente **React / Next.js** pronto, com SSR-safe + cleanup do contexto WebGL. |
-
-**Bancada de tuning (pra achar os valores antes de levar pra outro projeto):**
-
-| Arquivo | O quê |
-|---|---|
-| [`testbed/index.html`](testbed/index.html) | Playground com **painel de controle ao vivo** — mexe nos knobs (dissipação, raio, curl, bloom, blur, véu…) e vê o rastro mudar na hora. É daqui que saem os presets. |
-| [`testbed-shell.html`](testbed-shell.html) | Variante/shell da bancada. |
-
-**Injeção offline (parafernalha pessoal — injeta o efeito em apps existentes):**
-
-| Arquivo | O quê |
-|---|---|
-| [`apply_full.py`](apply_full.py) | Script que re-tematiza e injeta o fluido em apps Python/HTML já prontos (parte sempre do backup pristino → idempotente e reversível). Caminhos são pessoais; ajuste antes de reusar. |
-| [`fluid_inject_enhanced.txt`](fluid_inject_enhanced.txt) | Template do bloco CSS+JS injetado, com os knobs no topo. |
-| `wfe-index.umd.js` / `wfe-index.umd.b64` | Build do [`webgl-fluid-enhanced`](https://github.com/michaelbrusegard/WebGL-Fluid-Enhanced) embutido (o `.b64` é pra injetar sem depender de internet). |
+| [`testbed/index.html`](testbed/index.html) | **Bancada de tuning** com painel ao vivo. Autossuficiente — embute a lib [`webgl-fluid-enhanced`](https://github.com/michaelbrusegard/WebGL-Fluid-Enhanced), não precisa de internet. |
 
 > Créditos completos a todos os autores do efeito em [`CREDITS.md`](CREDITS.md). Licença em [`LICENSE`](LICENSE).
 

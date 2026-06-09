@@ -15,7 +15,7 @@ https://github.com/PavelDoGreat/WebGL-Fluid-Simulation
 webgl-fluid (npm wrapper / port)
 https://www.npmjs.com/package/webgl-fluid
 
-webgl-fluid-enhanced (class-based fork, bundled as wfe-index.umd.js)
+webgl-fluid-enhanced (class-based fork, inlined in testbed/index.html)
 Copyright (c) Michael Brusegard
 https://github.com/michaelbrusegard/WebGL-Fluid-Enhanced
 --------------------------------------------------------------------------------
