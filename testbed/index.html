@@ -69,6 +69,36 @@
   #painel .presets button{flex:1;min-width:70px;padding:6px;font-size:11px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);}
   #painel .btn-exp{width:100%;margin-top:10px;padding:9px;border-radius:9px;cursor:pointer;font-weight:600;background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:#fff;border:none;}
   #painel textarea{width:100%;height:120px;margin-top:8px;background:#0b1220;border:1px solid var(--border);color:#cbd5e1;border-radius:8px;padding:8px;font-family:ui-monospace,monospace;font-size:10.5px;resize:vertical;}
+
+  /* ===== kits salvos + disco de cor OKLCH ===== */
+  #painel .kits{margin-top:6px;}
+  .kit-btn{position:relative;display:flex;flex-direction:column;gap:4px;align-items:stretch;flex:1;min-width:70px;
+    padding:6px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);}
+  .kit-btn.on{background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:#fff;border-color:transparent;}
+  .kit-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .kit-btn.on:hover{color:#fff;}
+  .kit-sw{display:flex;height:10px;border-radius:4px;overflow:hidden;border:1px solid rgba(0,0,0,.3);}
+  .kit-sw i{flex:1;}
+  .kit-nm{font-size:10.5px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .kit-del{position:absolute;top:-6px;right:-6px;width:15px;height:15px;border-radius:50%;display:none;
+    align-items:center;justify-content:center;font-size:9px;background:#0f172a;border:1px solid var(--border);color:var(--text-secondary);cursor:pointer;}
+  .kit-btn:hover .kit-del{display:flex;}
+  .kit-del:hover{border-color:#ef4444;color:#ef4444;}
+  .kit-empty{font-size:10.5px;color:#64748b;padding:3px 2px;line-height:1.4;}
+  .kb-sw{width:26px;height:26px;border-radius:7px;cursor:pointer;padding:0;border:1px solid var(--border);}
+  .kb-add{width:26px;height:26px;border-radius:7px;cursor:pointer;font-size:16px;line-height:1;
+    background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px dashed var(--border);}
+  .kb-add:hover{border-color:var(--accent);color:var(--accent);}
+  .disk-pop{position:fixed;z-index:100;padding:10px;border-radius:14px;background:rgba(15,23,42,.96);
+    backdrop-filter:blur(12px);border:1px solid var(--glass-border);box-shadow:0 18px 40px rgba(0,0,0,.5);}
+  .disk-cv{display:block;cursor:crosshair;touch-action:none;border-radius:50%;}
+  .disk-b{display:flex;align-items:center;gap:6px;margin-top:9px;}
+  .disk-v{flex:1;min-width:0;accent-color:var(--accent);}
+  .disk-hex{width:74px;padding:4px 6px;font-size:11px;font-family:ui-monospace,monospace;
+    background:#0b1220;border:1px solid var(--border);color:#cbd5e1;border-radius:7px;}
+  .disk-del{width:26px;padding:4px 0;font-size:12px;border-radius:7px;cursor:pointer;
+    background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);}
+  .disk-del:hover{border-color:#ef4444;color:#ef4444;}
 </style>
 </head>
 <body>
@@ -103,7 +133,23 @@
       <button data-pal="quentes">Quentes</button>
       <button data-pal="indigo">Índigo</button>
       <button data-pal="frias">Frias</button>
+      <button id="corCustom" title="Escolher uma cor num disco de matiz e croma">🎨 cor custom</button>
     </div>
+
+    <div class="rowflex" style="justify-content:space-between;margin-top:12px">
+      <div class="note" style="margin:0">Meus kits</div>
+      <button id="kitNovo" style="padding:4px 10px;font-size:11px;border-radius:8px;background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);cursor:pointer;">+ novo</button>
+    </div>
+    <div class="presets kits" id="kitsRow"></div>
+    <div id="kitBuilder" hidden style="margin-top:8px;padding:9px;border:1px dashed var(--border);border-radius:10px;">
+      <div id="kbSws" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+      <div style="display:flex;gap:6px;margin-top:9px;align-items:center;">
+        <input id="kbName" placeholder="nome do kit" maxlength="24" style="flex:1;min-width:0;padding:6px 9px;font-size:11px;border-radius:8px;background:#0b1220;border:1px solid var(--border);color:#cbd5e1;">
+        <button id="kbSave" style="flex:0 0 auto;padding:6px 12px;font-size:11px;font-weight:600;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:#fff;border:none;cursor:pointer;">Salvar</button>
+        <button id="kbCancel" title="Cancelar" style="flex:0 0 auto;width:28px;padding:6px 0;font-size:13px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--text-secondary);border:1px solid var(--border);">✕</button>
+      </div>
+    </div>
+
     <label>Velocidade de troca de cor <b id="vCUS">15</b></label>
     <input type="range" id="cus" min="1" max="30" step="1" value="15">
 
@@ -580,10 +626,147 @@
     const swatches = el('swatches');
     DEFAULT_COLORS.forEach(s=>{ const w=document.createElement('div'); w.className='swatch';
       w.innerHTML=`<input type="checkbox" ${s.on?'checked':''}><input type="color" value="${s.c}">`; swatches.appendChild(w); });
-    function setPalette(list){ [...swatches.children].forEach((w,i)=>{ const chk=w.querySelector('input[type=checkbox]'),col=w.querySelector('input[type=color]');
-        if(i<list.length){chk.checked=true;col.value=list[i];}else{chk.checked=false;} }); el('colorful').checked=false; rebuild(); }
+    function ensureSwatchSlots(n){   // kits podem ter mais cores que os 6 swatches fixos — cresce sob demanda
+      while (swatches.children.length < n){
+        const w=document.createElement('div'); w.className='swatch';
+        w.innerHTML=`<input type="checkbox"><input type="color" value="#ffffff">`;
+        swatches.appendChild(w);
+      }
+    }
+    function setPalette(list){
+      ensureSwatchSlots(list.length);
+      [...swatches.children].forEach((w,i)=>{ const chk=w.querySelector('input[type=checkbox]'),col=w.querySelector('input[type=color]');
+        if(i<list.length){chk.checked=true;col.value=list[i];}else{chk.checked=false;} });
+      el('colorful').checked=false; rebuild();
+    }
     const PALETAS={quentes:['#FF7B00','#FF5100'],indigo:['#6366f1','#818cf8','#a5b4fc'],frias:['#06b6d4','#3b82f6','#22d3ee']};
-    document.querySelectorAll('#painel .presets button').forEach(b=>b.addEventListener('click',()=>setPalette(PALETAS[b.dataset.pal])));
+    document.querySelectorAll('#painel .presets:not(.kits) button').forEach(b=>{ if (b.dataset.pal) b.addEventListener('click',()=>setPalette(PALETAS[b.dataset.pal])); });
+
+    // ---- Conversões OKLCH ⇄ sRGB (Björn Ottosson) — mesmo espaço perceptual das rampas
+    // de cor do resto do projeto. oklch2rgb clampa ao gamut sRGB. ----
+    const _g  = v => v<=0.0031308 ? 12.92*v : 1.055*Math.pow(Math.max(0,v),1/2.4)-0.055;   // linear→sRGB
+    const _gi = v => v<=0.04045   ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);               // sRGB→linear
+    function oklch2rgb(L,C,h){ const hr=h*Math.PI/180, a=C*Math.cos(hr), b=C*Math.sin(hr);
+      const l=(L+0.3963377774*a+0.2158037573*b)**3, m=(L-0.1055613458*a-0.0638541728*b)**3, s=(L-0.0894841775*a-1.2914855480*b)**3;
+      return [ _g( 4.0767416621*l -3.3077115913*m +0.2309699292*s),
+               _g(-1.2684380046*l +2.6097574011*m -0.3413193965*s),
+               _g(-0.0041960863*l -0.7034186147*m +1.7076147010*s) ].map(v=>Math.round(Math.max(0,Math.min(1,v))*255)); }
+    function rgb2hex(r,g,b){ return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+    function hex2oklch(hex){ const mm=/^#?([0-9a-f]{6})$/i.exec(String(hex||'').trim()); if(!mm) return null;
+      const n=parseInt(mm[1],16), r=_gi((n>>16&255)/255), g=_gi((n>>8&255)/255), b=_gi((n&255)/255);
+      const l=Math.cbrt(0.4122214708*r+0.5363325363*g+0.0514459929*b),
+            m=Math.cbrt(0.2119034982*r+0.6806995451*g+0.1073969566*b),
+            s=Math.cbrt(0.0883024619*r+0.2817188376*g+0.6299787005*b);
+      const L=0.2104542553*l+0.7936177850*m-0.0040720468*s,
+            A=1.9779984951*l-2.4285922050*m+0.4505937099*s,
+            B=0.0259040371*l+0.7827717662*m-0.8086757660*s;
+      let h=Math.atan2(B,A)*180/Math.PI; if(h<0)h+=360;
+      return { L, C:Math.hypot(A,B), h }; }
+    function oklch2hex(L,C,h){ return rgb2hex(...oklch2rgb(L,C,h)); }
+
+    // ---- Disco de cor (roda HSV/OKLCH em canvas), self-contained ----
+    function closeDisk(){ const p=document.getElementById('diskPop');
+      if(p){ document.removeEventListener('pointerdown', p._out, true); p.remove(); } }
+    function openDisk(anchor, initHex, onPick, onDelete){
+      closeDisk();
+      const R=84;
+      const pop = document.createElement('div'); pop.id='diskPop'; pop.className='disk-pop';
+      pop.innerHTML = `<canvas width="${R*2}" height="${R*2}" class="disk-cv"></canvas>`+
+        `<div class="disk-b"><input type="range" class="disk-v" min="0" max="100" value="100" title="Luminosidade (OKLCH L)">`+
+        `<input class="disk-hex" maxlength="7" spellcheck="false">`+
+        (onDelete?`<button class="disk-del" title="Remover esta cor">✕</button>`:'')+`</div>`;
+      document.body.appendChild(pop);
+      const ar=anchor.getBoundingClientRect();
+      const pw=pop.offsetWidth||200, ph=pop.offsetHeight||232;
+      let left = Math.max(6, Math.min(innerWidth - pw - 6, ar.left));
+      const top = Math.max(6, Math.min(innerHeight - ph - 6, ar.bottom + 8));
+      pop.style.left = left + 'px'; pop.style.top = top + 'px';
+      const cv=pop.querySelector('.disk-cv'), vv=pop.querySelector('.disk-v'), hx=pop.querySelector('.disk-hex');
+      const CMAX=0.37;   // croma no raio do disco (~limite do gamut sRGB em OKLCH)
+      let L=0.72,C=0,h=0; const ini=hex2oklch(initHex); if(ini){ L=ini.L; C=Math.min(ini.C,CMAX); h=ini.h; } vv.value=Math.round(L*100);
+      function paint(){ const ctx=cv.getContext('2d'), img=ctx.createImageData(R*2,R*2), d=img.data;
+        for(let y=0;y<R*2;y++)for(let x=0;x<R*2;x++){ const dx=x-R,dy=y-R,rr=Math.hypot(dx,dy),i=(y*R*2+x)*4;
+          if(rr>R){ d[i+3]=0; continue; } const hh=(Math.atan2(dy,dx)*180/Math.PI+360)%360, rgb=oklch2rgb(L,(rr/R)*CMAX,hh);
+          d[i]=rgb[0];d[i+1]=rgb[1];d[i+2]=rgb[2];d[i+3]=255; }
+        ctx.putImageData(img,0,0);
+        const ang=h*Math.PI/180, rad=(C/CMAX)*R, mx=R+Math.cos(ang)*rad, my=R+Math.sin(ang)*rad;
+        ctx.beginPath(); ctx.arc(mx,my,5,0,7); ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke(); }
+      const cur = ()=> oklch2hex(L,C,h);
+      function emit(){ const c=cur(); hx.value=c; onPick(c); }
+      function pickAt(cx,cy){ const b=cv.getBoundingClientRect(), dx=cx-b.left-R, dy=cy-b.top-R;
+        h=(Math.atan2(dy,dx)*180/Math.PI+360)%360; C=Math.min(CMAX, (Math.hypot(dx,dy)/R)*CMAX); paint(); emit(); }
+      cv.addEventListener('pointerdown', e=>{ cv.setPointerCapture(e.pointerId); pickAt(e.clientX,e.clientY);
+        const mv=ev=>pickAt(ev.clientX,ev.clientY); cv.addEventListener('pointermove',mv);
+        cv.addEventListener('pointerup',()=>cv.removeEventListener('pointermove',mv),{once:true}); });
+      vv.addEventListener('input', ()=>{ L=vv.value/100; paint(); emit(); });
+      hx.value = cur();
+      hx.addEventListener('change', ()=>{ const o=hex2oklch(hx.value); if(o){ L=o.L; C=Math.min(o.C,CMAX); h=o.h; vv.value=Math.round(L*100); paint(); onPick(cur()); } });
+      pop.querySelector('.disk-del')?.addEventListener('click', ()=>{ closeDisk(); onDelete&&onDelete(); });
+      paint();
+      pop._out = ev=>{ if(!pop.contains(ev.target) && ev.target!==anchor) closeDisk(); };
+      setTimeout(()=>document.addEventListener('pointerdown', pop._out, true), 0);
+    }
+
+    // ---- "Meus kits": paletas nomeadas salvas em localStorage['fct_kits'] ----
+    const KITS_KEY = 'fct_kits';
+    let CUSTOM = {}; try { CUSTOM = JSON.parse(localStorage.getItem(KITS_KEY) || '{}') || {}; } catch(e){ CUSTOM = {}; }
+    function saveKits(){ try { localStorage.setItem(KITS_KEY, JSON.stringify(CUSTOM)); } catch(e){} }
+    const kitsRow = el('kitsRow');
+    function renderKits(){
+      const nomes = Object.keys(CUSTOM);
+      kitsRow.innerHTML = nomes.length ? nomes.map(n=>
+        `<button data-kit="${n.replace(/"/g,'&quot;')}" class="kit-btn" title="${n.replace(/"/g,'&quot;')}">`+
+        `<span class="kit-sw">${(CUSTOM[n]||[]).slice(0,6).map(c=>`<i style="background:${c}"></i>`).join('')}</span>`+
+        `<span class="kit-nm">${n}</span><em class="kit-del" data-del="${n.replace(/"/g,'&quot;')}" title="Excluir kit">✕</em></button>`).join('')
+        : `<span class="kit-empty">Nenhum kit salvo. Clique <b>+ novo</b> pra montar um.</span>`;
+    }
+    renderKits();
+    kitsRow.addEventListener('click', e=>{
+      const del = e.target.closest('.kit-del');
+      if (del){ e.stopPropagation(); delete CUSTOM[del.dataset.del]; saveKits(); renderKits(); return; }
+      const b = e.target.closest('.kit-btn');
+      if (b && CUSTOM[b.dataset.kit]) setPalette(CUSTOM[b.dataset.kit]);
+    });
+
+    // botão "cor custom": escolhe UMA cor no disco e soma como novo swatch ativo
+    el('corCustom').addEventListener('click', ()=>{
+      openDisk(el('corCustom'), '#FF7B00', hexEscolhido=>{
+        ensureSwatchSlots(swatches.children.length + 1);
+        const w = swatches.lastElementChild;
+        w.querySelector('input[type=checkbox]').checked = true;
+        w.querySelector('input[type=color]').value = hexEscolhido;
+        el('colorful').checked = false;
+        scheduleRebuild();
+      });
+    });
+
+    // "+ novo" kit: builder com as cores ativas do momento como ponto de partida
+    let building = [];
+    const kbWrap = el('kitBuilder'), kbSws = el('kbSws');
+    el('kitNovo').addEventListener('click', ()=>{
+      const ativos = [...swatches.children].filter(w=>w.querySelector('input[type=checkbox]').checked)
+        .map(w=>w.querySelector('input[type=color]').value);
+      building = (ativos.length ? ativos : ['#FF7B00','#FF5100']).slice(0,10);
+      kbWrap.hidden = false; drawBuilder(); kbWrap.scrollIntoView({block:'nearest'});
+    });
+    function drawBuilder(){
+      kbSws.innerHTML = building.map((c,i)=>`<button class="kb-sw" data-i="${i}" style="background:${c}" title="${c} — editar/remover"></button>`).join('')+
+        `<button class="kb-add" title="Adicionar cor">+</button>`;
+    }
+    kbWrap.addEventListener('click', e=>{
+      const sw = e.target.closest('.kb-sw');
+      if (sw){ const i=+sw.dataset.i;
+        openDisk(sw, building[i], hexNovo=>{ building[i]=hexNovo; sw.style.background=hexNovo; sw.title=hexNovo+' — editar/remover'; },
+                 building.length>1 ? ()=>{ building.splice(i,1); drawBuilder(); } : null);
+        return; }
+      if (e.target.closest('.kb-add')){ building.push('#'+Math.floor(Math.random()*0x1000000).toString(16).padStart(6,'0')); drawBuilder(); return; }
+    });
+    el('kbCancel').addEventListener('click', ()=>{ kbWrap.hidden = true; closeDisk(); });
+    el('kbSave').addEventListener('click', ()=>{
+      const nm = (el('kbName').value||'').trim() || ('Kit '+(Object.keys(CUSTOM).length+1));
+      CUSTOM[nm] = building.slice(); saveKits(); renderKits(); kbWrap.hidden = true; closeDisk();
+      setPalette(CUSTOM[nm]);
+    });
 
     function currentConfig(){
       const aleatorio = el('colorful').checked;
