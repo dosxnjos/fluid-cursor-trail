@@ -17,22 +17,29 @@
       overflow-x: hidden;
     }
 
-    /* O canvas do fluido: fixo, tela cheia, ATRÁS do conteúdo. */
+    /* O CONTÊINER do fluido: fixo, tela cheia, ATRÁS do conteúdo.
+       ⚠️ webgl-fluid-enhanced espera um CONTÊINER (div), não um <canvas> — ele cria e
+       gerencia o próprio <canvas> interno (100%x100%) e reescreve o `style` do elemento
+       que recebe. Passar um <canvas> aqui faz a lib aninhar um canvas dentro de outro
+       (o interno nunca é pintado — <canvas> não renderiza filhos).
+       ⚠️ A lib também SOBRESCREVE o atributo `style` do contêiner (seta
+       `position: relative; display: flex`), o que tira o elemento do fixed e empurra o
+       conteúdo abaixo dele na página (dobra a altura do body). `!important` é
+       obrigatório aqui — é a única forma de vencer o inline style que ela escreve. */
     #fluid {
-      position: fixed;
-      inset: 0;
+      position: fixed !important;
+      inset: 0 !important;
       width: 100vw;
       height: 100vh;
       z-index: 0;        /* fica atrás do conteúdo (que tem z-index maior) */
-      display: block;
       touch-action: none; /* permite o rastro no mobile sem rolar/zoom a página */
+      pointer-events: none; /* o canvas interno não precisa receber cliques */
     }
+    #fluid canvas { width: 100% !important; height: 100% !important; display: block !important; }
 
-    /* Conteúdo por cima do canvas.
-       IMPORTANTE: a camada de conteúdo precisa deixar o cursor "passar" até o canvas,
-       porque o webgl-fluid (original) escuta mousemove NO CANVAS.
-       Por isso: pointer-events: none no container decorativo,
-       e pointer-events: auto só nos elementos interativos de verdade (links, botões). */
+    /* Conteúdo por cima do contêiner.
+       O webgl-fluid-enhanced escuta `mousemove` no canvas INTERNO, não no window — o
+       script repassa o ponteiro real (ver comentário no <script> abaixo). */
     .content {
       position: relative;
       z-index: 1;
@@ -52,8 +59,8 @@
   </style>
 </head>
 <body>
-  <!-- 1. O canvas que recebe a simulação -->
-  <canvas id="fluid"></canvas>
+  <!-- 1. O contêiner que recebe a simulação (a lib cria o <canvas> interno sozinha) -->
+  <div id="fluid"></div>
 
   <!-- 2. Seu conteúdo normal por cima -->
   <main class="content">
@@ -63,44 +70,75 @@
   </main>
 
   <!-- 3. A simulação. Usamos o ESM via CDN pra não depender de bundler.
-       Trocar a versão fixa (@0.4.0) por outra é só mudar a URL. -->
+       Trocar a versão fixa por outra é só mudar a URL (confira a mais recente com
+       `npm view webgl-fluid-enhanced version`). -->
   <script type="module">
-    import WebGLFluid from 'https://esm.run/webgl-fluid@0.4.0';
+    import WebGLFluidEnhanced from 'https://esm.run/webgl-fluid-enhanced@0.8.0';
 
-    const canvas = document.getElementById('fluid');
+    const wrap = document.getElementById('fluid');
 
-    // ---- Config tunada pra ficar parecida com o torii (sutil, escuro, rosa/magenta) ----
-    // Comentários marcam tudo que difere do default do pacote.
-    WebGLFluid(canvas, {
-      TRANSPARENT: true,                  // canvas transparente -> compõe sobre o fundo escuro do site
-      BACK_COLOR: { r: 6, g: 4, b: 10 },  // 0-255; só usado se TRANSPARENT for false (deixo por segurança)
+    // Acessibilidade: quem pede menos movimento não recebe a simulação —
+    // nem o contêiner é inicializado.
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const sim = new WebGLFluidEnhanced(wrap);
 
-      SHADING: true,                      // (default) iluminação volumétrica — confirmado ligado no torii
-      BLOOM: true,                        // (default) brilho
-      BLOOM_INTENSITY: 0.4,               // de 0.8 -> mais sutil, sem estourar
-      BLOOM_THRESHOLD: 0.7,               // de 0.6 -> só os núcleos mais brilhantes brilham
-      SUNRAYS: false,                     // god-rays off -> rastro mais limpo
+      // ---- Config tunada pra ficar parecida com o torii (sutil, escuro, rosa/magenta) ----
+      // Nomes camelCase (API do fork) — comentários marcam o que difere do default dele.
+      sim.setConfig({
+        transparent: true,                // canvas transparente -> compõe sobre o fundo escuro do site
+        backgroundColor: '#06040a',       // só usado se transparent for false (deixo por segurança)
 
-      DENSITY_DISSIPATION: 3.5,           // de 1 -> tinta some rápido (rastro curto, não borra a tela)
-      VELOCITY_DISSIPATION: 0.5,          // de 0.2 -> movimento assenta mais rápido, rastro "cola" no cursor
-      CURL: 8,                            // de 30 -> bem menos redemoinho; fita suave em vez de caos
+        shading: true,                    // (default) iluminação volumétrica — confirmado ligado no torii
+        bloom: true,                      // (default) brilho
+        bloomIntensity: 0.4,              // de 0.8 -> mais sutil, sem estourar
+        bloomThreshold: 0.7,              // de 0.6 -> só os núcleos mais brilhantes brilham
+        sunrays: false,                   // god-rays off -> rastro mais limpo
 
-      SPLAT_RADIUS: 0.18,                 // de 0.25 -> rastro mais fino/delicado
-      SPLAT_FORCE: 4500,                  // de 6000 -> injeção mais calma
+        densityDissipation: 3.5,          // de 1 -> tinta some rápido (rastro curto, não borra a tela)
+        velocityDissipation: 0.5,         // de 0.2 -> movimento assenta mais rápido, rastro "cola" no cursor
+        curl: 8,                          // de 30 -> bem menos redemoinho; fita suave em vez de caos
 
-      COLORFUL: false,                    // desliga o ciclo automático de cores...
-      SPLAT_COLOR: { r: 0.9, g: 0.1, b: 0.5 }, // ...e fixa rosa/magenta (canais 0-1 float neste fork)
+        splatRadius: 0.18,                // de 0.25 -> rastro mais fino/delicado
+        splatForce: 4500,                 // de 6000 -> injeção mais calma
 
-      SIM_RESOLUTION: 96,                 // de 128 -> grid de velocidade mais barato
-      DYE_RESOLUTION: 512,                // de 1024 -> metade do custo de GPU, nítido o bastante p/ fundo
+        colorful: false,                  // desliga o ciclo automático de cores...
+        colorPalette: ['#E61A80'],        // ...e fixa rosa/magenta (mesmo tom de r:.9,g:.1,b:.5 do fork antigo)
 
-      TRIGGER: 'hover',                   // (default) rastro segue o cursor ao mover
-      IMMEDIATE: false,                   // sem a "explosão" aleatória inicial -> página carrega limpa
-      AUTO: false,                        // (default) nada de splats automáticos; 100% dirigido pelo cursor
-    });
+        simResolution: 96,                // de 128 -> grid de velocidade mais barato
+        dyeResolution: 512,               // de 1024 -> metade do custo de GPU, nítido o bastante p/ fundo
 
-    // Dica: se as cores saírem estranhas, comente SPLAT_COLOR e deixe COLORFUL: true.
-    // (SPLAT_COLOR é a opção mais "frágil" entre versões do pacote — é o 1º lugar a checar.)
+        hover: true,                      // (default) rastro segue o cursor ao mover
+      });
+      sim.start();
+      const canvasInterno = wrap.querySelector('canvas');
+
+      // O fork escuta `mousemove` no CANVAS INTERNO que ele mesmo cria — e esse canvas
+      // tem pointer-events:none (pra deixar cliques atravessarem até o conteúdo). Por
+      // isso o window escuta o ponteiro de verdade e repassa um mousemove sintético pro
+      // canvas interno (mesmo padrão do testbed/index.html deste repo).
+      window.addEventListener('pointermove', (e) => {
+        canvasInterno.dispatchEvent(new MouseEvent('mousemove', { clientX: e.clientX, clientY: e.clientY, bubbles: true }));
+        onPointerMove();
+      }, { passive: true });
+
+      // Idle-pause: o loop de simulação roda em requestAnimationFrame contínuo e
+      // consome GPU/bateria mesmo com o ponteiro parado — pausa após 3s de silêncio
+      // e retoma no primeiro movimento seguinte.
+      let idleTimer = null;
+      let paused = false;
+      const IDLE_MS = 3000;
+      function armarIdle() {
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => { sim.stop(); paused = true; }, IDLE_MS);
+      }
+      function onPointerMove() {
+        if (paused) { sim.start(); paused = false; }
+        armarIdle();
+      }
+      armarIdle();
+    }
+
+    // Dica: se as cores saírem estranhas, troque colorPalette e deixe colorful: true.
   </script>
 </body>
 </html>

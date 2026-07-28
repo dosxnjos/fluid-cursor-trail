@@ -4,6 +4,8 @@ O rastro do cursor na home do [torii.studio](https://torii.studio/) **não é um
 
 É o projeto open-source **[WebGL-Fluid-Simulation](https://github.com/PavelDoGreat/WebGL-Fluid-Simulation)** do **Pavel Dobryakov** — **licença MIT**. O torii só ligou `SHADING` + `BLOOM`, deixou o fundo **transparente** sobre o site escuro e tunou a paleta pro rosa/magenta da marca.
 
+Os consumidores deste repo (`index.html`, `FluidBackground.jsx`) rodam sobre o fork **[webgl-fluid-enhanced](https://github.com/michaelbrusegard/WebGL-Fluid-Enhanced)** — mesma simulação, API em classe com `start()`/`stop()` reais, além de idle-pause (a simulação pausa sozinha depois de 3s sem movimento do ponteiro) e respeito a `prefers-reduced-motion`.
+
 ## Demos ao vivo
 
 Abra e mexa o cursor — roda 100% no navegador, na GPU:
@@ -23,14 +25,14 @@ A cada movimento do cursor, o código calcula o deslocamento `(deltaX, deltaY)` 
 |---|---|
 | [`index.html`](index.html) | Versão **vanilla**, copia-e-cola. Carrega o pacote via CDN ESM (sem bundler). É o que a demo "Efeito" serve. |
 | [`FluidBackground.jsx`](FluidBackground.jsx) | Componente **React / Next.js** pronto, com SSR-safe + cleanup do contexto WebGL. |
-| [`testbed/index.html`](testbed/index.html) | **Bancada de tuning** com painel ao vivo. Autossuficiente — embute a lib [`webgl-fluid-enhanced`](https://github.com/michaelbrusegard/WebGL-Fluid-Enhanced), não precisa de internet. |
+| [`testbed/index.html`](testbed/index.html) | **Bancada de tuning** com painel ao vivo. Autossuficiente — embute a lib [`webgl-fluid-enhanced`](https://github.com/michaelbrusegard/WebGL-Fluid-Enhanced), não precisa de internet. Tem um **seletor de cor em disco (OKLCH)** — botão "🎨 cor custom" ao lado dos presets — e "Meus kits": salve paletas nomeadas (`localStorage`), reaplique com um clique. |
 
 > Créditos completos a todos os autores do efeito em [`CREDITS.md`](CREDITS.md). Licença em [`LICENSE`](LICENSE).
 
 ## Setup React/Next
 
 ```bash
-npm i webgl-fluid
+npm i webgl-fluid-enhanced
 ```
 
 Coloque `<FluidBackground />` no **`app/layout.js`** (não numa página). O layout persiste entre navegações → o componente não remonta a cada rota → evita o vazamento de contexto WebGL.
@@ -50,48 +52,78 @@ export default function RootLayout({ children }) {
 }
 ```
 
-## Config: defaults reais vs. a versão "torii"
+## Config: nomes novos (camelCase) vs. a versão "torii"
 
-> ⚠️ O README do pacote tem **dois defaults errados**: ele diz `VELOCITY_DISSIPATION: 0.3` e `SPLAT_RADIUS: 0.35`, mas o **código-fonte** usa `0.2` e `0.25`. A tabela abaixo usa os valores reais do fonte.
+> ⚠️ **Migração (27/07/2026): trocamos `webgl-fluid` por `webgl-fluid-enhanced`.** A API virou
+> classe (`new WebGLFluidEnhanced(container)` + `setConfig()` + `start()`/`stop()`) e os nomes de
+> config passaram de `SCREAMING_CASE` para `camelCase`. A tabela abaixo já reflete os nomes novos;
+> se você ainda tem código apontando pro pacote antigo, é só mapear 1:1 (`TRANSPARENT` →
+> `transparent`, `SPLAT_RADIUS` → `splatRadius` etc.).
 
-| Opção | Default (fonte) | Torii-style | Pra que serve |
+| Opção (fork atual) | Default do fork | Torii-style | Pra que serve |
 |---|---|---|---|
-| `TRANSPARENT` | `false` | **`true`** | Canvas transparente, compõe sobre seu fundo escuro |
-| `BACK_COLOR` | `{r:0,g:0,b:0}` | `{r:6,g:4,b:10}` | Cor de fundo (0-255). Ignorada se `TRANSPARENT` |
-| `SHADING` | `true` | `true` | Iluminação volumétrica (ligado no torii) |
-| `BLOOM` | `true` | `true` | Brilho (glow) |
-| `BLOOM_INTENSITY` | `0.8` | **`0.4`** | Força do glow — mais sutil |
-| `BLOOM_THRESHOLD` | `0.6` | **`0.7`** | Só núcleos brilhantes brilham |
-| `SUNRAYS` | `true` | **`false`** | God-rays — desligado p/ rastro limpo |
-| `DENSITY_DISSIPATION` | `1` | **`3.5`** | Velocidade com que a tinta some (↑ = some mais rápido) |
-| `VELOCITY_DISSIPATION` | `0.2` | **`0.5`** | Velocidade com que o movimento assenta |
-| `CURL` | `30` | **`8`** | Redemoinho/turbulência (↓ = fita suave) |
-| `SPLAT_RADIUS` | `0.25` | **`0.18`** | Espessura do rastro |
-| `SPLAT_FORCE` | `6000` | **`4500`** | Força de injeção por movimento |
-| `COLORFUL` | `true` | **`false`** | Ciclo automático de cores (off p/ fixar a cor) |
-| `SPLAT_COLOR` | `undefined` | `{r:.9,g:.1,b:.5}` | Cor fixa do rastro (canais **0-1 float**) |
-| `SIM_RESOLUTION` | `128` | **`96`** | Resolução do grid de velocidade (custo) |
-| `DYE_RESOLUTION` | `1024` | **`512`** | Resolução da tinta (nitidez vs. custo de GPU) |
-| `PRESSURE_ITERATIONS` | `20` | `20` | Iterações do solver de pressão (principal custo) |
-| `TRIGGER` | `'hover'` | `'hover'` | `'hover'` = segue o cursor; `'click'` = só no clique |
-| `IMMEDIATE` | `true` | **`false`** | "Explosão" aleatória inicial (off = carrega limpo) |
-| `AUTO` | `false` | `false` | Splats automáticos periódicos |
+| `transparent` | `false` | **`true`** | Canvas transparente, compõe sobre seu fundo escuro |
+| `backgroundColor` | `'#000000'` | `'#06040a'` | Cor de fundo (hex). Ignorada se `transparent` |
+| `shading` | `true` | `true` | Iluminação volumétrica (ligado no torii) |
+| `bloom` | `true` | `true` | Brilho (glow) |
+| `bloomIntensity` | `0.8` | **`0.4`** | Força do glow — mais sutil |
+| `bloomThreshold` | `0.6` | **`0.7`** | Só núcleos brilhantes brilham |
+| `sunrays` | `true` | **`false`** | God-rays — desligado p/ rastro limpo |
+| `densityDissipation` | `1` | **`3.5`** | Velocidade com que a tinta some (↑ = some mais rápido) |
+| `velocityDissipation` | `0.2` | **`0.5`** | Velocidade com que o movimento assenta |
+| `curl` | `30` | **`8`** | Redemoinho/turbulência (↓ = fita suave) |
+| `splatRadius` | `0.25` | **`0.18`** | Espessura do rastro |
+| `splatForce` | `6000` | **`4500`** | Força de injeção por movimento |
+| `colorful` | `true` | **`false`** | Ciclo automático de cores (off p/ fixar a cor) |
+| `colorPalette` | `[]` | `['#E61A80']` | Paleta fixa do rastro, em hex (equivale ao antigo `SPLAT_COLOR: {r:.9,g:.1,b:.5}`) |
+| `simResolution` | `128` | **`96`** | Resolução do grid de velocidade (custo) |
+| `dyeResolution` | `1024` | **`512`** | Resolução da tinta (nitidez vs. custo de GPU) |
+| `pressureIterations` | `20` | `20` | Iterações do solver de pressão (principal custo) |
+| `hover` | `true` | `true` | Rastro segue o cursor ao mover (equivalente ao antigo `TRIGGER: 'hover'`) |
 
-**Quer mais ou menos rastro?** Mexa em `DENSITY_DISSIPATION` (↑ = rastro mais curto), `SPLAT_RADIUS` (espessura) e `CURL` (quantidade de redemoinho).
+**Quer mais ou menos rastro?** Mexa em `densityDissipation` (↑ = rastro mais curto), `splatRadius` (espessura) e `curl` (quantidade de redemoinho).
 
-## Gotchas (os 5 que você vai esbarrar)
+## Idle-pause e `prefers-reduced-motion`
 
-1. **Sem teardown → vaza contexto WebGL.** O pacote original roda um `requestAnimationFrame` cujo id nunca é guardado e adiciona listeners anônimos. A cada remontagem cria um novo contexto até o browser reclamar (*"Too many active WebGL contexts"*). **Fix:** montar **uma vez** no layout (não remonta) + soltar o contexto no cleanup com `WEBGL_lose_context` (já feito no componente). Alternativa: usar o fork [`webgl-fluid-enhanced`](https://www.npmjs.com/package/webgl-fluid-enhanced), que tem `start()`/`stop()`.
+Os dois consumidores (`index.html`, `FluidBackground.jsx`) pausam a simulação sozinhos depois de
+**3s sem movimento do ponteiro** (`sim.stop()`, retomando com `sim.start()` no próximo
+`pointermove`) — o `requestAnimationFrame` contínuo do solver consome GPU/bateria mesmo parado, e
+não há motivo pra isso rodar com a tela "quieta". Quem tem `prefers-reduced-motion: reduce`
+ativado **nem inicializa** a simulação (nenhum canvas é criado). Nenhum dos dois é configurável —
+o valor de 3s já foi validado no uso real; virar um knob seria complexidade sem consumidor.
+
+## Gotchas (os que você vai esbarrar)
+
+1. **~~Sem teardown → vaza contexto WebGL~~ (resolvido pelo fork).** O pacote `webgl-fluid`
+   original rodava um `requestAnimationFrame` cujo id nunca era guardado, exigindo o hack de
+   forçar `WEBGL_lose_context` no cleanup. O fork `webgl-fluid-enhanced` expõe `stop()` de
+   verdade — o cleanup dos dois consumidores só chama `sim.stop()`, sem tocar em contexto WebGL.
 
 2. **SSR quebra.** O pacote toca `window`/`document` no load. `'use client'` **não** impede SSR sozinho. **Fix:** import dinâmico **dentro** do `useEffect` (já feito). Pra garantia máxima, renderize via `next/dynamic` com `{ ssr: false }`.
 
 3. **Strict Mode monta 2x em dev** → loop duplicado. **Fix:** flag `cancelled` setada no cleanup e checada após o import resolver (já feito).
 
-4. **Pointer-events.** No pacote original o `mousemove` é escutado **no canvas** — então **não** ponha `pointer-events: none` nele, ou o rastro morre. **Fix (estilo torii):** canvas `position: fixed; inset: 0; z-index: 0`; a camada de conteúdo decorativa com `pointer-events: none` (o cursor atravessa até o canvas) e `pointer-events: auto` só nos links/botões. (O fork *enhanced* escuta no `window`, aí você pode pôr `pointer-events: none` no canvas.)
+4. **O contêiner passado NÃO é o canvas.** `new WebGLFluidEnhanced(container)` espera um
+   **elemento contêiner** (`<div>`) — ele cria e gerencia o próprio `<canvas>` interno, e
+   **sobrescreve o atributo `style`** desse contêiner (seta `position: relative; display: flex`).
+   Passar um `<canvas>` no lugar do contêiner faz a lib tentar aninhar um canvas dentro de outro
+   (o interno nunca é pintado — `<canvas>` não renderiza filhos), e não travar o `position: fixed`
+   do contêiner com `!important` faz o layout dobrar de altura (o efeito sai do fixed e empurra o
+   conteúdo da página pra baixo dele). Os dois consumidores já cobrem isso — ver os comentários
+   `⚠️` em `index.html`/`FluidBackground.jsx`.
 
-5. **Cor/transparência fora do esperado.** Default pinta preto sólido (`TRANSPARENT: false`) e cicla todas as cores (`COLORFUL: true`). **Fix:** `TRANSPARENT: true` + `COLORFUL: false` + `SPLAT_COLOR`. Se a cor sair estranha, comente `SPLAT_COLOR` e volte pra `COLORFUL: true` — `SPLAT_COLOR` é a opção que mais varia entre versões.
+5. **Pointer-events.** O fork escuta `mousemove` no **canvas interno que ele mesmo cria**, não no
+   `window` (ao contrário do que a documentação do fork sugere) — então esse canvas interno
+   **PODE** ter `pointer-events: none` (é o que os dois consumidores fazem, pra deixar o cursor
+   atravessar até o conteúdo/links reais), mas alguém precisa repassar o movimento real do
+   ponteiro pra ele: o `window` escuta `pointermove` de verdade e despacha um `mousemove`
+   sintético pro canvas interno (`wrap.querySelector('canvas')`) — ver a função `onPointerMove` em
+   `index.html`/`FluidBackground.jsx`/`testbed/index.html`. Esquecer esse repasse é a razão mais
+   provável do rastro simplesmente não aparecer.
 
-**Mobile:** o pacote auto-reduz `DYE_RESOLUTION` e **desliga `BLOOM`/`SUNRAYS`** em celulares sem suporte a float-linear — então o glow pode sumir em alguns aparelhos. Use `touch-action: none` no canvas pra ter rastro sem rolar a página.
+6. **Cor/transparência fora do esperado.** Default pinta preto sólido (`transparent: false`) e cicla todas as cores (`colorful: true`). **Fix:** `transparent: true` + `colorful: false` + `colorPalette: ['#hex']`.
+
+**Mobile:** o pacote auto-reduz `dyeResolution` e pode desligar `bloom`/`sunrays` em celulares sem suporte a float-linear — então o glow pode sumir em alguns aparelhos. Use `touch-action: none` no contêiner pra ter rastro sem rolar a página.
 
 ## Licença
 
